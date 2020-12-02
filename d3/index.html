@@ -27,87 +27,67 @@
       </div>
     </div>
 
-    <!--NavBar-->
-    <nav class="navbar fixed-top navbar-light" style="background-color: #1D3557">
-      <!-- Navbar content -->
-    </nav>
-
     <!-- FILTER -->
-  <div class="d-flex justify-content-center flex-column shadow-lg p-3 rounded my-2 col" id="main">  
-  <div class="legend d-flex mx-4 my-0 justify-content-center"> <h2 class="display-3"><b>Follow our instinct : </b></h2></div>
-    <div class='chart shadow-lg p-3 m-4 rounded my-3 p-2' id="filter">
-      <canvas id="background"></canvas>
-      <canvas id="foreground"></canvas>
-      <canvas id="highlight"></canvas>
-      <svg></svg>
-    </div>
-     
-    <!-- SCATTERPLOT -->
-
-
-    <div class="legend d-flex mx-4 my-0 justify-content-center"> <h2 class="display-4"><b>Scatter legend : </b></h2></div>
-    <div class="d-flex m-2 justify-content-center flex-row"> 
-      <div class="p-2">
-        <p>X axis : 
-          <select id="X_axis_scatter">
-            <option value="revenue" selected="selected">Revenue</option>
-            <option value="budget">Budget</option>
-            <option value="vote_average">Vote average</option>
-            <option value="popularity">Popularity</option>
-          </select>
-        </p>
+    <div class="" id="main">  
+      <div class='chart mt' id="filter">
+        <canvas id="background"></canvas>
+        <canvas id="foreground"></canvas>
+        <canvas id="highlight"></canvas>
+        <svg></svg>
       </div>
-      <div class="p-2">
-        <p>Y axis :
-          <select id="Y_axis_scatter">
+    </div>
+
+    <!-- SCATTERPLOT -->
+    
+    <div class="row oddrow border mt-0">
+      <div class="col-md-6">
+        <div class="col-md-2">
+          <select id="Y_axis_scatter" class="form-control">
             <option value="revenue" >Revenue</option>
             <option value="budget" selected = "selected">Budget</option>
             <option value="vote_average">Vote average</option>
             <option value="popularity">Popularity</option>
           </select>
-        </p>
+        </div>
+        <div id="scatter_plot"></div>
+        <div class="col-md-2 offset-md-10">
+          <select id="X_axis_scatter" class="form-control">
+            <option value="revenue" selected="selected">Revenue</option>
+            <option value="budget">Budget</option>
+            <option value="vote_average">Vote average</option>
+            <option value="popularity">Popularity</option>
+          </select>
+        </div>
       </div>
-    </div>
-      <div class='chart shadow-lg p-3 m-4 rounded my-3 p-2' id = scatter_plot style="height: 500px"></div>
-
-      <!-- TOP10 -->
-    <div class="legend d-flex mx-4 my-0 justify-content-center"> <h2 class="display-4"><b>TOP10 legend : </b></h2></div>  
-    <div class="d-flex m-2 justify-content-center flex-row">   
-      <div class="p-2 bd-highlight">
-        <p>Criteria:
-          <select id="label-option">
+      
+      <div class="col-md-6">
+        <div class='m-1' id="top10"></div>
+        <div class="col-md-2 offset-md-10">
+          <select id="label-option" class="form-control">
             <option value="revenue" selected = "selected">Revenue</option>
             <option value="budget">budget</option>
             <option value="vote_average">vote_average</option>
             <option value="popularity">popularity</option>
           </select>
-        </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row oddrow border mt-0">
+      <div class="col-md-6">
+        <div id="wordcloud"></div>
+      </div>
+      <div class="col-md-6">
+        <div class='m-1' id="map"></div>
       </div>
     </div>
 
 
-      <div class="shadow-lg p-3 m-4 rounded my-3 p-2" style="height: 500px">
-          <div class='m-4 chart' id="top10" ></div>
-      </div>
-
-      <!-- WORDCLOUD -->
-      <div class="legend d-flex mx-4 my-0 justify-content-center"> <h2 class="display-4"><b>Wordcloud legend : </b></h2></div>
-      <div class="shadow-lg p-3 m-4 rounded my-3 p-2" style="height: 500px ">
-        <div class='mx-2 chart' id="wordcloud" ></div>
-      </div>
-     
-      <!-- MAP -->
-      <div class="legend d-flex mx-4 my-0 justify-content-center "> <h2 class="display-4"><b>MAP legend : </b></h2></div>
-      <div class="shadow-lg p-3 m-4 rounded my-3 p-2 " style="height: 500px">
-          <div class="chart align-content-center" id="map"></div>
-      </div>
-    
-  </div>
 
 
   </body>
-  <script src="http://underscorejs.org/underscore.js"></script>
-  <script src="js/bundle.js" type="module"></script>
-  <script src="https://d3js.org/queue.v1.min.js"></script>
-  <script src="https://d3js.org/topojson.v1.min.js"></script>
-</html>
+    <script src="http://underscorejs.org/underscore.js"></script>
+    <script src="js/bundle.js" type="module"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+  </html>

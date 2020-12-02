@@ -13,8 +13,8 @@ d3.csv("./data/tmdb-movie-metadata/tmdb_5000_movies_clean.csv").then(function(ra
     data = raw_data.map(function(d) {
       try{
         return {
-          budget: parseFloat(d["budget"]), 
-          revenue: parseFloat(d["revenue"]), 
+          budget: parseFloat(d["budget"]) / 1e6, 
+          revenue: parseFloat(d["revenue"]) / 1e6, 
           vote_average: parseFloat(d["vote_average"]), 
           popularity: parseFloat(d["popularity"]),
           genre: d["genres"].split('-').flat()[0] ,
@@ -25,8 +25,8 @@ d3.csv("./data/tmdb-movie-metadata/tmdb_5000_movies_clean.csv").then(function(ra
         };
       }catch{
         return {
-          budget: parseFloat(d["budget"]), 
-          revenue: parseFloat(d["revenue"]), 
+          budget: parseFloat(d["budget"]) / 1e6, 
+          revenue: parseFloat(d["revenue"] / 1e6), 
           vote_average: parseFloat(d["vote_average"]), 
           popularity: parseFloat(d["popularity"]),
           genre: "unknown",

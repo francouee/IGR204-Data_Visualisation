@@ -40,10 +40,10 @@ var colors = {
 function filterdata(data){
 
   var width = document.body.clientWidth,
-      height = d3.max([document.body.clientHeight-540, 240]);
+      height = document.body.clientHeight/5
 
-  var m = [60, 100, 10, 100],
-      w = width - m[1] - m[3],
+  var m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width],
+      w = width,
       h = height - m[0] - m[2],
       xscale = d3.scaleBand().rangeRound([15, width-15], 1),
       yscale = {},
@@ -656,8 +656,9 @@ function filterdata(data){
 
   // scale to window size
   window.onresize = function() {
-    width = document.body.clientWidth,
-    height = d3.max([document.body.clientHeight-500, 220]);
+    width = document.body.clientWidth
+    height = document.body.clientHeight / 5;
+    m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width]
 
     w = width - m[1] - m[3],
     h = height - m[0] - m[2];
@@ -777,7 +778,7 @@ function filterdata(data){
 //export default filterdata;
 module.exports.filterdata = filterdata;
   
-},{"./map.js":3,"./scatter.js":43,"./top10_movies.js":44,"./wordcloud.js":45,"d3":42}],2:[function(require,module,exports){
+},{"./map.js":3,"./scatter.js":4,"./top10_movies.js":5,"./wordcloud.js":6,"d3":45}],2:[function(require,module,exports){
 var filterdata  = require("./filter.js");
 var top10  = require("./top10_movies.js");
 var wordcloud = require("./wordcloud.js");
@@ -793,8 +794,8 @@ d3.csv("./data/tmdb-movie-metadata/tmdb_5000_movies_clean.csv").then(function(ra
     data = raw_data.map(function(d) {
       try{
         return {
-          budget: parseFloat(d["budget"]), 
-          revenue: parseFloat(d["revenue"]), 
+          budget: parseFloat(d["budget"]) / 1e6, 
+          revenue: parseFloat(d["revenue"]) / 1e6, 
           vote_average: parseFloat(d["vote_average"]), 
           popularity: parseFloat(d["popularity"]),
           genre: d["genres"].split('-').flat()[0] ,
@@ -805,8 +806,8 @@ d3.csv("./data/tmdb-movie-metadata/tmdb_5000_movies_clean.csv").then(function(ra
         };
       }catch{
         return {
-          budget: parseFloat(d["budget"]), 
-          revenue: parseFloat(d["revenue"]), 
+          budget: parseFloat(d["budget"]) / 1e6, 
+          revenue: parseFloat(d["revenue"] / 1e6), 
           vote_average: parseFloat(d["vote_average"]), 
           popularity: parseFloat(d["popularity"]),
           genre: "unknown",
@@ -824,7 +825,7 @@ d3.csv("./data/tmdb-movie-metadata/tmdb_5000_movies_clean.csv").then(function(ra
     map.map(data)
     wordcloud.wordcloud(data)
   });
-},{"./filter.js":1,"./map.js":3,"./scatter.js":43,"./top10_movies.js":44,"./wordcloud.js":45,"d3":42}],3:[function(require,module,exports){
+},{"./filter.js":1,"./map.js":3,"./scatter.js":4,"./top10_movies.js":5,"./wordcloud.js":6,"d3":45}],3:[function(require,module,exports){
 
 var d3 = require("d3")
 var d3legend = require("d3-svg-legend")
@@ -994,7 +995,600 @@ function count_country(data){
 module.exports.map = map;
 module.exports.change = change; 
 
-},{"d3":42,"d3-svg-legend":30}],4:[function(require,module,exports){
+},{"d3":45,"d3-svg-legend":33}],4:[function(require,module,exports){
+
+/*
+References :
+- simple scatter plot : https://www.d3-graph-gallery.com/graph/scatter_basic.html
+- d3 scatter plot with bubbles : https://www.d3-graph-gallery.com/graph/bubble_tooltip.html
+*/
+
+// set the dimensions and margins of the graph
+
+var d3 = require("d3")
+// var d3chromatic = require("d3-scale-chromatic")
+
+var xx = 20
+var margin = {top: 50+xx, right: xx, bottom: xx - 10, left: 100+xx},
+    width = document.body.clientWidth/2 - margin.left - margin.right,
+    height = document.body.clientHeight/3 - margin.top - margin.bottom,
+    data_path = "../tmdb_5000_movies.csv",
+    x, 
+    y,
+    xAxis,
+    yAxis,
+    xaxislabel, 
+    yaxislabel,
+    mouseover, 
+    mouseout;
+
+// append the svg object to the body of the page
+var svg = d3.select("#scatter_plot").style("height", height + margin.top + margin.bottom + 'px')
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom + 20)
+  .append("g")
+    .attr("transform",
+    "translate(" + margin.left + "," + margin.top + ")");
+
+var rscale = d3.scaleLinear()
+  .domain([0, 1000])
+  .range([5, 50]);
+
+// Add a scale for bubble color
+var myColor = d3.scaleOrdinal()
+  .domain(['Documentary', 'Drama', 'Fantasy', 'Mystery', 'Adventure',
+  'Horror', 'Romance', 'War', 'Crime', 'Action', 'History',
+  'Animation', 'Western', 'Comedy', 'Family', 'TV Movie',
+  'Science Fiction', 'Foreign', 'Music', 'Thriller'])
+  .range(d3.schemeSet2);
+
+/*
+// -1- Create a tooltip div that is hidden by default:
+var tooltip = d3.select("#scatter_plot")
+  .append("div")
+    .style("opacity", 0)
+    .attr("class", "tooltip")
+    .style("background-color", "blue")
+    .style("border-radius", "5px")
+    .style("padding", "5px")
+    .style("color", "white")
+
+// -2- Create 3 functions to show / update (when mouse move but stay on same circle) / hide the tooltip
+var showTooltip = function (d) {
+  tooltip
+    .transition()
+    .duration(200)
+  tooltip
+    .style("opacity", 0.8)
+    .html("<b>Title: </b>" + d.name + "<br/>" 
+    + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
+    + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
+    + d.genre)
+    .style("left", (d3.mouse(this)[0] + 30) + "px")
+    .style("top", (d3.mouse(this)[1] + 30) + "px")
+}
+var moveTooltip = function (d) {
+  tooltip
+    .style("left", (d3.mouse(this)[0] + 30) + "px")
+    .style("top", (d3.mouse(this)[1] + 30) + "px")
+}
+var hideTooltip = function (d) {
+  tooltip
+    .transition()
+    .duration(200)
+    .style("opacity", 0)
+}
+*/
+
+mouseover = function(d){
+  tooltip.transition()    
+  .duration(200)    
+  .style("opacity", 1);
+
+  tooltip .html("<b>Title: </b>" + d.name + "<br/>" 
+  + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
+  + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
+  + d.genre)
+  .style("left", (d3.event.pageX + 10) + "px")
+  .style("top", (d3.event.pageY - 15) + "px")
+
+  }
+
+mouseout = function(d){
+  tooltip.transition()    
+  .duration(200)    
+  .style("opacity", 0)
+}
+
+// create tooltips
+var tooltip = d3.select("body")
+    .append("div")  
+    .style('position','absolute')
+    .style("opacity", 0)
+    .style("background-color", "lightsteelblue")
+    .style("border", "solid")
+    .style("border-width", "1px")
+    .style("border-radius", "5px")
+    .style("padding", "10px");
+
+
+
+function scatter(data){
+  //alert("connected")
+
+  var i = "revenue"
+  var j= "budget"
+  // select topData based on i
+  var topData = data.sort(function (a, b) {
+    return d3.descending(+a[i], +b[i]);
+  }).slice(0, 100);
+ 
+  // Add X axis
+  x = d3.scaleLinear()
+    .domain([d3.min(topData, function(d) { return d[i] ;} ), d3.max(topData, function(d) { return d[i] ;} )])
+    .range([0, width - margin.right - margin.left]);
+  
+  // Add Y axis
+  y = d3.scaleLinear()
+    .domain([d3.min(topData, function (d) { return d[j]; }), d3.max(topData, function (d) { return d[j]; })])
+    .range([height, 0]);
+
+ xAxis = svg.append("g")
+ .call(d3.axisBottom(x))
+ .attr("transform", "translate(0," + height + ")")
+
+ yAxis = svg.append("g")
+  .call(d3.axisLeft(y));
+  
+  // Add dots
+
+  svg.append('g')
+    .selectAll("dot")
+    .data(topData)
+    .enter()
+    .append("circle")
+      .attr("class", "bubbles")
+      .attr("cy", (d) => y(d[j]))
+      .attr("cx", (d) => x(d[i]))
+      .attr("r", (d) => rscale(d.popularity))
+      .style("fill", "#141AC9")
+      .style("fill", (d) => myColor(d.genre))
+    .on("mouseover", mouseover)
+    .on("mouseout", mouseout);
+
+}
+
+//create update function 
+
+function change(data) {
+  var selectValueX = d3.select('#X_axis_scatter').property('value');
+  var selectValueY = d3.select('#Y_axis_scatter').property('value');
+
+  var i = selectValueX
+  var j= selectValueY
+
+  var topData = data.sort(function (a, b) {
+    return d3.descending(+a[i], +b[i]);
+  }).slice(0, 100);
+
+  // update x and y domain / scale       
+  x.domain([d3.min(topData, function(d) { return d[i] ;} ), d3.max(topData, function(d) { return d[i] ;} )])
+    .call(d3.axisLeft(x))
+
+  y.domain([d3.min(topData, function (d) { return d[j]; }), d3.max(topData, function (d) { return d[j]; })])
+    .call(d3.axisLeft(y))
+    
+  xAxis
+    .transition()
+    .duration(1500)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .style("text-anchor", "middle");
+  
+  yAxis
+  .transition()
+  .duration(1500)
+  .call(d3.axisLeft(y))
+  .selectAll("text")
+  .style("text-anchor", "middle");
+  
+  xaxislabel
+    .attr("text-anchor", "middle")
+    .text(selectValueX);
+
+  yaxislabel
+    .attr("text-anchor", "end")
+    .text(selectValueY);
+  
+  var dots = d3.selectAll(".bubbles").data(topData)
+
+  dots.exit().remove(); 
+
+  dots.attr("cx", function(d) {return  x(d[i]);})
+  //.attr("cy", (d) => y(d.budget))
+      .attr("cy", function(d) {return  y(d[j]);})
+      .attr("r", (d) => rscale(d.popularity))
+      .style("fill", "#141AC9")
+      .style("fill", (d) => myColor(d.genre))
+}
+
+
+
+module.exports.scatter = scatter;
+module.exports.change = change;
+
+
+
+
+
+},{"d3":45}],5:[function(require,module,exports){
+// MS BGD 2019-2020 - HIROTO YAMAKAWA 
+var d3 = require("d3")
+
+var x, 
+    y, 
+    yAxis,
+    xAxis,
+    xaxislabel, 
+    yaxislabel, 
+    svg,
+    i,
+    topData, 
+    mouseover, 
+    mouseout
+
+var format = d3.format(',')
+
+function top10(data){
+
+  // set the and margins of the graph
+  var margin = {top: 20, right: 80, bottom: 20, left: 230},
+      width = document.body.clientWidth/2 - margin.left - margin.right,
+      height = document.body.clientHeight/3 - margin.top - margin.bottom
+
+  // append the svg object to the body of the page
+  svg = d3.select("#top10")
+      .style("height", height + margin.top + margin.bottom + 'px')
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom + 20)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+      
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // create variables
+  x = d3.scaleLinear()
+  .range([ 0, width]);
+
+  y = d3.scaleBand()
+  .range([ 0, height ])
+  .padding(1);
+
+  // create labels
+  yaxislabel =svg.append("text")
+  .attr("text-anchor", "end")
+  .attr("transform", "rotate(0)")
+  .attr("y", 0)
+  .attr("x", -15);        
+
+  xaxislabel = svg.append("text")
+  .attr("text-anchor", "end")
+  .attr("x", width)
+  .attr("y", height + margin.top + 20);
+      
+  // create axis
+  xAxis = svg.append("g")
+  .call(d3.axisLeft(x))
+  .attr("transform", "translate(0," + height + ")");
+
+  yAxis = svg.append("g")
+  .call(d3.axisLeft(y));
+
+  // set i to "revenue" (default choice)
+  i = "revenue"
+
+  // create mouseover and mouseout functions
+  mouseover = function(d){
+    tooltip.transition()    
+    .duration(200)    
+    .style("opacity", 1);
+
+    tooltip .html("name: " + d.name + "<br/>" + i + " : " + format(d[i]) + "<br/>" + "genre : "+ d.genre)
+    .style("left", (d3.event.pageX + 10) + "px")
+    .style("top", (d3.event.pageY - 15) + "px")
+
+    }
+
+  mouseout = function(d){
+    tooltip.transition()    
+    .duration(200)    
+    .style("opacity", 0)
+  }
+
+  // create tooltips
+  var tooltip = d3.select("body")
+      .append("div")  
+      .style('position','absolute')
+      .style("opacity", 0)
+      .style("background-color", "lightsteelblue")
+      .style("border", "solid")
+      .style("border-width", "1px")
+      .style("border-radius", "5px")
+      .style("padding", "10px");
+    
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+   //./data/tmdb-movie-metadata/tmdb_5000_movies.csv
+    //initiate graph
+  initialGraph(data);
+
+    //update graph based on selection from HTML dragdown
+  //d3.select("#label-option").on("change", () => change(data));
+
+  topData = data.slice(0, 20)
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // create function initialGraph
+  function initialGraph(data){
+
+    var selectValue = d3.select('select').property('value')
+
+    // select topData based on i
+    var topData = data.sort(function(a, b) {
+      return d3.descending(+a[i], +b[i]);
+      }).slice(0, 21);
+
+    // rescale the domain
+    x.domain([0, d3.max(topData, function(d) { return d[i] ;} )]);
+    y.domain(topData.map(function(d) { return d.name; }));
+
+    
+    //initiate X axis
+    xAxis
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .style("text-anchor", "end");
+
+    //initiate Y axis
+    yAxis
+    .call(d3.axisLeft(y));
+
+
+    //initiate X axis label
+    xaxislabel.text(i);
+
+    //initiate Y axis label
+    yaxislabel.text("movies");
+
+    //initiate bars, all starting at 0 at the beginning
+    svg.selectAll(".bar")
+    .data(topData)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("x",  function(d) {return  x(0);})
+    .attr("y", function(d) { return y(d.name); })
+    .attr("width",function(d){return x(0);} )
+    .attr("height", 15)
+    .on("mouseover", mouseover)
+    .on("mouseout", mouseout);
+
+
+    //update the bar with the transition
+    svg.selectAll(".bar")
+    .transition()
+    .duration(500)
+    .attr("width",function(d) { return  x(d[i]);}  )
+    .attr("y", function(d) { return y(d.name); })
+    .attr("height", 15)
+    .attr("fill", function(d) {
+      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});;
+
+    // add label next to bar
+    svg.append("g")
+      .attr("fill", "white")
+      .attr("text-anchor", "end")
+      .style("font", "12px sans-serif")
+    .selectAll("label-top10")
+    .data(topData)
+    .enter().append("text")
+    .attr("class", "label-top10")
+    .attr("x", d => x(d[i]) - 4)
+    .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
+    .text(d => format(d[i]));
+
+  };
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+//create update function 
+
+function change(data) {
+
+  var selectValue = d3.select('#label-option').property('value');
+  //update topData
+
+  var remake
+
+  if (topData.length < 20){
+    remake = true
+  }else{
+    remake = false
+  }
+
+  topData = data.sort(function(a, b) {
+    return d3.descending(+a[selectValue], +b[selectValue]);
+  }).slice(0, 20);
+
+
+  // update x and y domain / scale       
+  x
+  .domain([0, d3.max(topData, function(d) { return d[selectValue] ;} )])
+  .call(d3.axisBottom(x));
+    
+  y
+  .domain(topData.map(function(d) { return d.name; }))
+  .call(d3.axisLeft(y));
+    
+
+  // Update x axis label   (y axis remains unchanged)
+  xaxislabel
+  .attr("text-anchor", "end")
+  .text(selectValue);
+  
+  
+  // Update the Y-axis and X-axis
+  yAxis
+  .transition()
+  .duration(1500)
+  .call(d3.axisLeft(y));
+  
+  xAxis
+  .transition()
+  .duration(1500)
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+  .attr("transform", "translate(-10,0)rotate(-20)")
+  .style("text-anchor", "end");
+
+  
+  // console.log(d3.event, d3.event.target == d3.select('#label-option')._groups[0][0], d3.select('#label-option')._groups[0][0])
+
+  var event_is_select = d3.event.target == d3.select('#label-option')._groups[0][0]
+  // console.log(event_is_select)
+  if (remake){
+
+    var bar = svg.selectAll('.bar')
+    bar.remove()
+
+    svg.selectAll(".bar")
+        .data(topData)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x",  function(d) {return  x(0);})
+        .attr("y", function(d) { return y(d.name); })
+        .attr("width",function(d){return x(0);} )
+        .attr("height", 15)
+        .on("mouseover", mouseover)
+        .on("mouseout", mouseout);
+
+    svg.selectAll(".bar")
+      .transition()
+      .duration(500)
+      .attr("width",function(d) { return  x(d[i]);}  )
+      .attr("y", function(d) { return y(d.name); })
+      .attr("height", 15)
+      .attr("fill", function(d) {
+      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});
+
+  }else{
+    var bar = svg.selectAll('.bar').data(topData);
+    bar.exit().remove(); 
+    // Update data:
+    bar
+    .transition()
+    .duration(500)
+    .attr("x",  function(d) {return  x(0);})
+    .attr("y", function(d) { return y(d.name); })
+    .attr("width",function(d){return x(0);} )
+    .attr("width",function(d) { return  x(d[selectValue]);}  )
+    .attr("height", 15)
+    .attr("fill", function(d) {
+      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});
+  }
+
+  // add label next to bar
+
+  var textlabel = svg.selectAll(".label-top10").data(topData)
+  textlabel.exit().remove()
+
+  textlabel.transition().duration(300)
+    .attr("x", d => x(d[selectValue]) - 4)
+    .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
+    .text(d => format(d[selectValue]));
+
+}
+
+module.exports.top10 = top10; 
+module.exports.change = change; 
+
+// export default {top10, change};
+  
+
+  
+       
+
+},{"d3":45}],6:[function(require,module,exports){
+var d3 = require("d3"),
+    cloud = require("d3-cloud");
+
+function wordcloud(data){
+  var wordsMap = {};
+  var words = [];
+
+  data.map(function(d){
+    d.text.map(word => {
+      if (wordsMap.hasOwnProperty(word)) {
+        wordsMap[word]++;
+      } else {
+        wordsMap[word] = 1;
+      }
+    }) 
+  })
+  for (const [key, value] of Object.entries(wordsMap)) {
+    words.push({text: key, size: 5 + wordsMap[key]})
+  }
+
+  words = words.sort(function(a, b){
+    return b.size - a.size
+  })
+
+  var layout = cloud()
+    .size([900, 500])
+    .words(words.slice(0, 100))
+    .padding(5)
+    .font("Impact")
+    .rotate(function() { return ~~(Math.random() * 2) * 45; })
+    .fontSize(function(d) { return d.size; })
+    .on("end", draw);
+
+  layout.start();
+
+  function draw(words) {
+    d3.select("#wordcloud").append("svg")
+        .attr("width", layout.size()[0])
+        .attr("height", layout.size()[1])
+      .append("g")
+        .attr("transform", "translate(" + layout.size()[0] / 2 + "," + layout.size()[1] / 2 + ")")
+      .selectAll("text")
+        .data(words)
+      .enter().append("text")
+        .style("font-size", function(d) { return d.size + "px"; })
+        .style("font-family", "Impact")
+        .attr("text-anchor", "middle")
+        .attr("transform", function(d) {
+          return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+        })
+        .text(function(d) { return d.text; });
+    };
+}
+
+  function change(data){
+    d3.select("#wordcloud").selectAll("svg > *").remove();
+    wordcloud(data)
+  }
+
+module.exports.wordcloud = wordcloud;
+module.exports.change = change;
+
+},{"d3":45,"d3-cloud":11}],7:[function(require,module,exports){
 // https://d3js.org/d3-array/ v1.2.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1586,7 +2180,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],5:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v1.0.12 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1781,8 +2375,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],6:[function(require,module,exports){
-// https://d3js.org/d3-brush/ v1.1.5 Copyright 2019 Mike Bostock
+},{}],9:[function(require,module,exports){
+// https://d3js.org/d3-brush/ v1.1.6 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
 typeof define === 'function' && define.amd ? define(['exports', 'd3-dispatch', 'd3-drag', 'd3-interpolate', 'd3-selection', 'd3-transition'], factory) :
@@ -2091,14 +2685,16 @@ function brush$1(dim) {
   }
 
   function emitter(that, args, clean) {
-    return (!clean && that.__brush.emitter) || new Emitter(that, args);
+    var emit = that.__brush.emitter;
+    return emit && (!clean || !emit.clean) ? emit : new Emitter(that, args, clean);
   }
 
-  function Emitter(that, args) {
+  function Emitter(that, args, clean) {
     this.that = that;
     this.args = args;
     this.state = that.__brush;
     this.active = 0;
+    this.clean = clean;
   }
 
   Emitter.prototype = {
@@ -2400,7 +2996,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":12,"d3-drag":13,"d3-interpolate":21,"d3-selection":28,"d3-transition":39}],7:[function(require,module,exports){
+},{"d3-dispatch":15,"d3-drag":16,"d3-interpolate":24,"d3-selection":31,"d3-transition":42}],10:[function(require,module,exports){
 // https://d3js.org/d3-chord/ v1.0.6 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-path')) :
@@ -2632,8 +3228,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":4,"d3-path":22}],8:[function(require,module,exports){
-(function (global){
+},{"d3-array":7,"d3-path":25}],11:[function(require,module,exports){
+(function (global){(function (){
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g=(g.d3||(g.d3 = {}));g=(g.layout||(g.layout = {}));g.cloud = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 // Word cloud layout by Jason Davies, https://www.jasondavies.com/wordcloud/
 // Algorithm due to Jonathan Feinberg, http://static.mrfeinberg.com/bv_ch03.pdf
@@ -3134,8 +3730,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 },{}]},{},[1])(1)
 });
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"d3-dispatch":12}],9:[function(require,module,exports){
+}).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"d3-dispatch":15}],12:[function(require,module,exports){
 // https://d3js.org/d3-collection/ v1.0.7 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3354,7 +3950,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],10:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // https://d3js.org/d3-color/ v1.4.1 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3937,7 +4533,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],11:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 // https://d3js.org/d3-contour/ v1.3.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -4370,7 +4966,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":4}],12:[function(require,module,exports){
+},{"d3-array":7}],15:[function(require,module,exports){
 // https://d3js.org/d3-dispatch/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4467,7 +5063,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 // https://d3js.org/d3-drag/ v1.2.5 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-selection')) :
@@ -4703,7 +5299,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":12,"d3-selection":28}],14:[function(require,module,exports){
+},{"d3-dispatch":15,"d3-selection":31}],17:[function(require,module,exports){
 // https://d3js.org/d3-dsv/ v1.2.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -4938,8 +5534,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],15:[function(require,module,exports){
-// https://d3js.org/d3-ease/ v1.0.6 Copyright 2019 Mike Bostock
+},{}],18:[function(require,module,exports){
+// https://d3js.org/d3-ease/ v1.0.7 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -5016,7 +5612,7 @@ var pi = Math.PI,
     halfPi = pi / 2;
 
 function sinIn(t) {
-  return 1 - Math.cos(t * halfPi);
+  return (+t === 1) ? 1 : 1 - Math.cos(t * halfPi);
 }
 
 function sinOut(t) {
@@ -5027,16 +5623,21 @@ function sinInOut(t) {
   return (1 - Math.cos(pi * t)) / 2;
 }
 
+// tpmt is two power minus ten times t scaled to [0,1]
+function tpmt(x) {
+  return (Math.pow(2, -10 * x) - 0.0009765625) * 1.0009775171065494;
+}
+
 function expIn(t) {
-  return Math.pow(2, 10 * t - 10);
+  return tpmt(1 - +t);
 }
 
 function expOut(t) {
-  return 1 - Math.pow(2, -10 * t);
+  return 1 - tpmt(t);
 }
 
 function expInOut(t) {
-  return ((t *= 2) <= 1 ? Math.pow(2, 10 * t - 10) : 2 - Math.pow(2, 10 - 10 * t)) / 2;
+  return ((t *= 2) <= 1 ? tpmt(1 - t) : 2 - tpmt(t - 1)) / 2;
 }
 
 function circleIn(t) {
@@ -5080,7 +5681,7 @@ var backIn = (function custom(s) {
   s = +s;
 
   function backIn(t) {
-    return t * t * ((s + 1) * t - s);
+    return (t = +t) * t * (s * (t - 1) + t);
   }
 
   backIn.overshoot = custom;
@@ -5092,7 +5693,7 @@ var backOut = (function custom(s) {
   s = +s;
 
   function backOut(t) {
-    return --t * t * ((s + 1) * t + s) + 1;
+    return --t * t * ((t + 1) * s + t) + 1;
   }
 
   backOut.overshoot = custom;
@@ -5120,7 +5721,7 @@ var elasticIn = (function custom(a, p) {
   var s = Math.asin(1 / (a = Math.max(1, a))) * (p /= tau);
 
   function elasticIn(t) {
-    return a * Math.pow(2, 10 * --t) * Math.sin((s - t) / p);
+    return a * tpmt(-(--t)) * Math.sin((s - t) / p);
   }
 
   elasticIn.amplitude = function(a) { return custom(a, p * tau); };
@@ -5133,7 +5734,7 @@ var elasticOut = (function custom(a, p) {
   var s = Math.asin(1 / (a = Math.max(1, a))) * (p /= tau);
 
   function elasticOut(t) {
-    return 1 - a * Math.pow(2, -10 * (t = +t)) * Math.sin((t + s) / p);
+    return 1 - a * tpmt(t = +t) * Math.sin((t + s) / p);
   }
 
   elasticOut.amplitude = function(a) { return custom(a, p * tau); };
@@ -5147,8 +5748,8 @@ var elasticInOut = (function custom(a, p) {
 
   function elasticInOut(t) {
     return ((t = t * 2 - 1) < 0
-        ? a * Math.pow(2, 10 * t) * Math.sin((s - t) / p)
-        : 2 - a * Math.pow(2, -10 * t) * Math.sin((s + t) / p)) / 2;
+        ? a * tpmt(-t) * Math.sin((s - t) / p)
+        : 2 - a * tpmt(t) * Math.sin((s + t) / p)) / 2;
   }
 
   elasticInOut.amplitude = function(a) { return custom(a, p * tau); };
@@ -5199,7 +5800,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // https://d3js.org/d3-fetch/ v1.2.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dsv')) :
@@ -5304,7 +5905,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dsv":14}],17:[function(require,module,exports){
+},{"d3-dsv":17}],20:[function(require,module,exports){
 // https://d3js.org/d3-force/ v1.2.1 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-quadtree'), require('d3-collection'), require('d3-dispatch'), require('d3-timer')) :
@@ -5974,18 +6575,24 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-collection":9,"d3-dispatch":12,"d3-quadtree":24,"d3-timer":38}],18:[function(require,module,exports){
-// https://d3js.org/d3-format/ v1.4.4 Copyright 2020 Mike Bostock
+},{"d3-collection":12,"d3-dispatch":15,"d3-quadtree":27,"d3-timer":41}],21:[function(require,module,exports){
+// https://d3js.org/d3-format/ v1.4.5 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 typeof define === 'function' && define.amd ? define(['exports'], factory) :
-(global = global || self, factory(global.d3 = global.d3 || {}));
-}(this, function (exports) { 'use strict';
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.d3 = global.d3 || {}));
+}(this, (function (exports) { 'use strict';
+
+function formatDecimal(x) {
+  return Math.abs(x = Math.round(x)) >= 1e21
+      ? x.toLocaleString("en").replace(/,/g, "")
+      : x.toString(10);
+}
 
 // Computes the decimal coefficient and exponent of the specified number x with
 // significant digits p, where x is positive and p is in [1, 21] or undefined.
-// For example, formatDecimal(1.23) returns ["123", 0].
-function formatDecimal(x, p) {
+// For example, formatDecimalParts(1.23) returns ["123", 0].
+function formatDecimalParts(x, p) {
   if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
   var i, coefficient = x.slice(0, i);
 
@@ -5998,7 +6605,7 @@ function formatDecimal(x, p) {
 }
 
 function exponent(x) {
-  return x = formatDecimal(Math.abs(x)), x ? x[1] : NaN;
+  return x = formatDecimalParts(Math.abs(x)), x ? x[1] : NaN;
 }
 
 function formatGroup(grouping, thousands) {
@@ -6091,7 +6698,7 @@ function formatTrim(s) {
 var prefixExponent;
 
 function formatPrefixAuto(x, p) {
-  var d = formatDecimal(x, p);
+  var d = formatDecimalParts(x, p);
   if (!d) return x + "";
   var coefficient = d[0],
       exponent = d[1],
@@ -6100,11 +6707,11 @@ function formatPrefixAuto(x, p) {
   return i === n ? coefficient
       : i > n ? coefficient + new Array(i - n + 1).join("0")
       : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i)
-      : "0." + new Array(1 - i).join("0") + formatDecimal(x, Math.max(0, p + i - 1))[0]; // less than 1y!
+      : "0." + new Array(1 - i).join("0") + formatDecimalParts(x, Math.max(0, p + i - 1))[0]; // less than 1y!
 }
 
 function formatRounded(x, p) {
-  var d = formatDecimal(x, p);
+  var d = formatDecimalParts(x, p);
   if (!d) return x + "";
   var coefficient = d[0],
       exponent = d[1];
@@ -6117,7 +6724,7 @@ var formatTypes = {
   "%": function(x, p) { return (x * 100).toFixed(p); },
   "b": function(x) { return Math.round(x).toString(2); },
   "c": function(x) { return x + ""; },
-  "d": function(x) { return Math.round(x).toString(10); },
+  "d": formatDecimal,
   "e": function(x, p) { return x.toExponential(p); },
   "f": function(x, p) { return x.toFixed(p); },
   "g": function(x, p) { return x.toPrecision(p); },
@@ -6313,9 +6920,9 @@ exports.precisionRound = precisionRound;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
 
-},{}],19:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-geo/ v1.12.1 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -9482,7 +10089,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":4}],20:[function(require,module,exports){
+},{"d3-array":7}],23:[function(require,module,exports){
 // https://d3js.org/d3-hierarchy/ v1.1.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -10774,7 +11381,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v1.4.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -11369,7 +11976,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":10}],22:[function(require,module,exports){
+},{"d3-color":13}],25:[function(require,module,exports){
 // https://d3js.org/d3-path/ v1.0.9 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11512,7 +12119,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],23:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-polygon/ v1.0.6 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -11664,7 +12271,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],24:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // https://d3js.org/d3-quadtree/ v1.0.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -12085,7 +12692,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],25:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // https://d3js.org/d3-random/ v1.1.2 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -12202,7 +12809,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],26:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 // https://d3js.org/d3-scale-chromatic/ v1.5.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-interpolate'), require('d3-color')) :
@@ -12725,7 +13332,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":10,"d3-interpolate":21}],27:[function(require,module,exports){
+},{"d3-color":13,"d3-interpolate":24}],30:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v2.2.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-collection'), require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -13892,8 +14499,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":4,"d3-collection":9,"d3-format":18,"d3-interpolate":21,"d3-time":37,"d3-time-format":36}],28:[function(require,module,exports){
-// https://d3js.org/d3-selection/ v1.4.1 Copyright 2019 Mike Bostock
+},{"d3-array":7,"d3-collection":12,"d3-format":21,"d3-interpolate":24,"d3-time":40,"d3-time-format":39}],31:[function(require,module,exports){
+// https://d3js.org/d3-selection/ v1.4.2 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -14883,7 +15490,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],29:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v1.3.7 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -16834,7 +17441,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-path":22}],30:[function(require,module,exports){
+},{"d3-path":25}],33:[function(require,module,exports){
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-selection'), require('d3-format'), require('d3-dispatch'), require('d3-scale'), require('d3-array')) :
 	typeof define === 'function' && define.amd ? define(['exports', 'd3-selection', 'd3-format', 'd3-dispatch', 'd3-scale', 'd3-array'], factory) :
@@ -17856,7 +18463,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 })));
 
 
-},{"d3-array":31,"d3-dispatch":32,"d3-format":33,"d3-scale":34,"d3-selection":35}],31:[function(require,module,exports){
+},{"d3-array":34,"d3-dispatch":35,"d3-format":36,"d3-scale":37,"d3-selection":38}],34:[function(require,module,exports){
 // https://d3js.org/d3-array/ Version 1.0.1. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -18321,7 +18928,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{}],32:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // https://d3js.org/d3-dispatch/ Version 1.0.1. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -18417,7 +19024,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{}],33:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // https://d3js.org/d3-format/ Version 1.0.2. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -18747,7 +19354,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{}],34:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // https://d3js.org/d3-scale/ Version 1.0.3. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-collection'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format'), require('d3-color')) :
@@ -19650,7 +20257,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{"d3-array":31,"d3-collection":9,"d3-color":10,"d3-format":33,"d3-interpolate":21,"d3-time":37,"d3-time-format":36}],35:[function(require,module,exports){
+},{"d3-array":34,"d3-collection":12,"d3-color":13,"d3-format":36,"d3-interpolate":24,"d3-time":40,"d3-time-format":39}],38:[function(require,module,exports){
 // https://d3js.org/d3-selection/ Version 1.0.2. Copyright 2016 Mike Bostock.
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -20624,8 +21231,8 @@ Object.defineProperty(exports, '__esModule', { value: true });
   Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
-},{}],36:[function(require,module,exports){
-// https://d3js.org/d3-time-format/ v2.2.3 Copyright 2019 Mike Bostock
+},{}],39:[function(require,module,exports){
+// https://d3js.org/d3-time-format/ v2.3.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
 typeof define === 'function' && define.amd ? define(['exports', 'd3-time'], factory) :
@@ -20684,6 +21291,8 @@ function formatLocale(locale) {
     "d": formatDayOfMonth,
     "e": formatDayOfMonth,
     "f": formatMicroseconds,
+    "g": formatYearISO,
+    "G": formatFullYearISO,
     "H": formatHour24,
     "I": formatHour12,
     "j": formatDayOfYear,
@@ -20717,6 +21326,8 @@ function formatLocale(locale) {
     "d": formatUTCDayOfMonth,
     "e": formatUTCDayOfMonth,
     "f": formatUTCMicroseconds,
+    "g": formatUTCYearISO,
+    "G": formatUTCFullYearISO,
     "H": formatUTCHour24,
     "I": formatUTCHour12,
     "j": formatUTCDayOfYear,
@@ -20750,6 +21361,8 @@ function formatLocale(locale) {
     "d": parseDayOfMonth,
     "e": parseDayOfMonth,
     "f": parseMicroseconds,
+    "g": parseYear,
+    "G": parseFullYear,
     "H": parseHour24,
     "I": parseHour24,
     "j": parseDayOfYear,
@@ -21171,9 +21784,13 @@ function formatWeekNumberSunday(d, p) {
   return pad(d3Time.timeSunday.count(d3Time.timeYear(d) - 1, d), p, 2);
 }
 
-function formatWeekNumberISO(d, p) {
+function dISO(d) {
   var day = d.getDay();
-  d = (day >= 4 || day === 0) ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
+  return (day >= 4 || day === 0) ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
+}
+
+function formatWeekNumberISO(d, p) {
+  d = dISO(d);
   return pad(d3Time.timeThursday.count(d3Time.timeYear(d), d) + (d3Time.timeYear(d).getDay() === 4), p, 2);
 }
 
@@ -21189,7 +21806,18 @@ function formatYear(d, p) {
   return pad(d.getFullYear() % 100, p, 2);
 }
 
+function formatYearISO(d, p) {
+  d = dISO(d);
+  return pad(d.getFullYear() % 100, p, 2);
+}
+
 function formatFullYear(d, p) {
+  return pad(d.getFullYear() % 10000, p, 4);
+}
+
+function formatFullYearISO(d, p) {
+  var day = d.getDay();
+  d = (day >= 4 || day === 0) ? d3Time.timeThursday(d) : d3Time.timeThursday.ceil(d);
   return pad(d.getFullYear() % 10000, p, 4);
 }
 
@@ -21245,9 +21873,13 @@ function formatUTCWeekNumberSunday(d, p) {
   return pad(d3Time.utcSunday.count(d3Time.utcYear(d) - 1, d), p, 2);
 }
 
-function formatUTCWeekNumberISO(d, p) {
+function UTCdISO(d) {
   var day = d.getUTCDay();
-  d = (day >= 4 || day === 0) ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
+  return (day >= 4 || day === 0) ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
+}
+
+function formatUTCWeekNumberISO(d, p) {
+  d = UTCdISO(d);
   return pad(d3Time.utcThursday.count(d3Time.utcYear(d), d) + (d3Time.utcYear(d).getUTCDay() === 4), p, 2);
 }
 
@@ -21263,7 +21895,18 @@ function formatUTCYear(d, p) {
   return pad(d.getUTCFullYear() % 100, p, 2);
 }
 
+function formatUTCYearISO(d, p) {
+  d = UTCdISO(d);
+  return pad(d.getUTCFullYear() % 100, p, 2);
+}
+
 function formatUTCFullYear(d, p) {
+  return pad(d.getUTCFullYear() % 10000, p, 4);
+}
+
+function formatUTCFullYearISO(d, p) {
+  var day = d.getUTCDay();
+  d = (day >= 4 || day === 0) ? d3Time.utcThursday(d) : d3Time.utcThursday.ceil(d);
   return pad(d.getUTCFullYear() % 10000, p, 4);
 }
 
@@ -21333,7 +21976,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":37}],37:[function(require,module,exports){
+},{"d3-time":40}],40:[function(require,module,exports){
 // https://d3js.org/d3-time/ v1.1.0 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -21708,7 +22351,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],38:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 // https://d3js.org/d3-timer/ v1.0.10 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -21859,7 +22502,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],39:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 // https://d3js.org/d3-transition/ v1.3.2 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-selection'), require('d3-dispatch'), require('d3-timer'), require('d3-interpolate'), require('d3-color'), require('d3-ease')) :
@@ -22741,7 +23384,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":10,"d3-dispatch":12,"d3-ease":15,"d3-interpolate":21,"d3-selection":28,"d3-timer":38}],40:[function(require,module,exports){
+},{"d3-color":13,"d3-dispatch":15,"d3-ease":18,"d3-interpolate":24,"d3-selection":31,"d3-timer":41}],43:[function(require,module,exports){
 // https://d3js.org/d3-voronoi/ v1.1.4 Copyright 2018 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -23742,7 +24385,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],41:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 // https://d3js.org/d3-zoom/ v1.8.3 Copyright 2019 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-dispatch'), require('d3-drag'), require('d3-interpolate'), require('d3-selection'), require('d3-transition')) :
@@ -24241,7 +24884,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-dispatch":12,"d3-drag":13,"d3-interpolate":21,"d3-selection":28,"d3-transition":39}],42:[function(require,module,exports){
+},{"d3-dispatch":15,"d3-drag":16,"d3-interpolate":24,"d3-selection":31,"d3-transition":42}],45:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -24530,617 +25173,4 @@ Object.keys(d3Zoom).forEach(function (k) {
 });
 exports.version = version;
 
-},{"d3-array":4,"d3-axis":5,"d3-brush":6,"d3-chord":7,"d3-collection":9,"d3-color":10,"d3-contour":11,"d3-dispatch":12,"d3-drag":13,"d3-dsv":14,"d3-ease":15,"d3-fetch":16,"d3-force":17,"d3-format":18,"d3-geo":19,"d3-hierarchy":20,"d3-interpolate":21,"d3-path":22,"d3-polygon":23,"d3-quadtree":24,"d3-random":25,"d3-scale":27,"d3-scale-chromatic":26,"d3-selection":28,"d3-shape":29,"d3-time":37,"d3-time-format":36,"d3-timer":38,"d3-transition":39,"d3-voronoi":40,"d3-zoom":41}],43:[function(require,module,exports){
-
-/*
-References :
-- simple scatter plot : https://www.d3-graph-gallery.com/graph/scatter_basic.html
-- d3 scatter plot with bubbles : https://www.d3-graph-gallery.com/graph/bubble_tooltip.html
-*/
-
-// set the dimensions and margins of the graph
-
-var d3 = require("d3")
-// var d3chromatic = require("d3-scale-chromatic")
-
-var xx = 20
-var margin = {top: 10+xx, right: 30+xx, bottom: 30+xx, left: 60+xx},
-    width = 1200, //- margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom,
-    data_path = "../tmdb_5000_movies.csv",
-    x, 
-    y,
-    xAxis,
-    yAxis,
-    xaxislabel, 
-    yaxislabel,
-    mouseover, 
-    mouseout;
-
-// append the svg object to the body of the page
-var svg = d3.select("#scatter_plot")
-  .append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform",
-    "translate(" + margin.left + "," + margin.top + ")");
-
-var rscale = d3.scaleLinear()
-  .domain([0, 1000])
-  .range([5, 50]);
-
-// Add a scale for bubble color
-var myColor = d3.scaleOrdinal()
-  .domain(['Documentary', 'Drama', 'Fantasy', 'Mystery', 'Adventure',
-  'Horror', 'Romance', 'War', 'Crime', 'Action', 'History',
-  'Animation', 'Western', 'Comedy', 'Family', 'TV Movie',
-  'Science Fiction', 'Foreign', 'Music', 'Thriller'])
-  .range(d3.schemeSet2);
-
-/*
-// -1- Create a tooltip div that is hidden by default:
-var tooltip = d3.select("#scatter_plot")
-  .append("div")
-    .style("opacity", 0)
-    .attr("class", "tooltip")
-    .style("background-color", "blue")
-    .style("border-radius", "5px")
-    .style("padding", "5px")
-    .style("color", "white")
-
-// -2- Create 3 functions to show / update (when mouse move but stay on same circle) / hide the tooltip
-var showTooltip = function (d) {
-  tooltip
-    .transition()
-    .duration(200)
-  tooltip
-    .style("opacity", 0.8)
-    .html("<b>Title: </b>" + d.name + "<br/>" 
-    + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
-    + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
-    + d.genre)
-    .style("left", (d3.mouse(this)[0] + 30) + "px")
-    .style("top", (d3.mouse(this)[1] + 30) + "px")
-}
-var moveTooltip = function (d) {
-  tooltip
-    .style("left", (d3.mouse(this)[0] + 30) + "px")
-    .style("top", (d3.mouse(this)[1] + 30) + "px")
-}
-var hideTooltip = function (d) {
-  tooltip
-    .transition()
-    .duration(200)
-    .style("opacity", 0)
-}
-*/
-
-mouseover = function(d){
-  tooltip.transition()    
-  .duration(200)    
-  .style("opacity", 1);
-
-  tooltip .html("<b>Title: </b>" + d.name + "<br/>" 
-  + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
-  + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
-  + d.genre)
-  .style("left", (d3.event.pageX + 10) + "px")
-  .style("top", (d3.event.pageY - 15) + "px")
-
-  }
-
-mouseout = function(d){
-  tooltip.transition()    
-  .duration(200)    
-  .style("opacity", 0)
-}
-
-// create tooltips
-var tooltip = d3.select("body")
-    .append("div")  
-    .style('position','absolute')
-    .style("opacity", 0)
-    .style("background-color", "lightsteelblue")
-    .style("border", "solid")
-    .style("border-width", "1px")
-    .style("border-radius", "5px")
-    .style("padding", "10px");
-
-
-
-function scatter(data){
-  //alert("connected")
-
-  var i = "revenue"
-  var j= "budget"
-  // select topData based on i
-  var topData = data.sort(function (a, b) {
-    return d3.descending(+a[i], +b[i]);
-  }).slice(0, 100);
- 
-  // Add X axis
-  x = d3.scaleLinear()
-    .domain([d3.min(topData, function(d) { return d[i] ;} ), d3.max(topData, function(d) { return d[i] ;} )])
-    .range([0, width - margin.right - margin.left]);
-  
-  // Add Y axis
-  y = d3.scaleLinear()
-    .domain([d3.min(topData, function (d) { return d[j]; }), d3.max(topData, function (d) { return d[j]; })])
-    .range([height, 0]);
-
- xAxis = svg.append("g")
- .call(d3.axisBottom(x))
- .attr("transform", "translate(0," + height + ")");
-
- yAxis = svg.append("g")
-  .call(d3.axisLeft(y));
-  
-xaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("x", width - margin.right - margin.left)
-  .attr("y", height + margin.top)
-  .text(i);
-
-yaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("transform", "rotate(0)")
-  .attr("y", 0)
-  .attr("x", -10)
-  .text(j);
-
-  // Add dots
-
-  svg.append('g')
-    .selectAll("dot")
-    .data(topData)
-    .enter()
-    .append("circle")
-      .attr("class", "bubbles")
-      .attr("cy", (d) => y(d[j]))
-      .attr("cx", (d) => x(d[i]))
-      .attr("r", (d) => rscale(d.popularity))
-      .style("fill", "#141AC9")
-      .style("fill", (d) => myColor(d.genre))
-    .on("mouseover", mouseover)
-    .on("mouseout", mouseout);
-    /*
-    .on("mouseover", showTooltip )
-    .on("mousemove", moveTooltip )
-    .on("mouseleave", hideTooltip )
-    */
-
-  //d3.select("#X_axis_scatter").on("change", () => change(data));
-  //d3.select("#Y_axis_scatter").on("change", () => change(data));
-
-}
-
-//create update function 
-
-function change(data) {
-  var selectValueX = d3.select('#X_axis_scatter').property('value');
-  var selectValueY = d3.select('#Y_axis_scatter').property('value');
-
-  var i = selectValueX
-  var j= selectValueY
-
-  var topData = data.sort(function (a, b) {
-    return d3.descending(+a[i], +b[i]);
-  }).slice(0, 100);
-
-  // update x and y domain / scale       
-  x.domain([d3.min(topData, function(d) { return d[i] ;} ), d3.max(topData, function(d) { return d[i] ;} )])
-    .call(d3.axisLeft(x))
-
-  y.domain([d3.min(topData, function (d) { return d[j]; }), d3.max(topData, function (d) { return d[j]; })])
-    .call(d3.axisLeft(y))
-    
-  xAxis
-    .transition()
-    .duration(1500)
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .style("text-anchor", "middle");
-  
-  yAxis
-  .transition()
-  .duration(1500)
-  .call(d3.axisLeft(y))
-  .selectAll("text")
-  .style("text-anchor", "middle");
-  
-  xaxislabel
-    .attr("text-anchor", "middle")
-    .text(selectValueX);
-
-  yaxislabel
-    .attr("text-anchor", "end")
-    .text(selectValueY);
-  
-  var dots = d3.selectAll(".bubbles").data(topData)
-
-  dots.exit().remove(); 
-
-  dots.attr("cx", function(d) {return  x(d[i]);})
-  //.attr("cy", (d) => y(d.budget))
-      .attr("cy", function(d) {return  y(d[j]);})
-      .attr("r", (d) => rscale(d.popularity))
-      .style("fill", "#141AC9")
-      .style("fill", (d) => myColor(d.genre))
-}
-
-
-
-module.exports.scatter = scatter;
-module.exports.change = change;
-
-
-
-
-
-},{"d3":42}],44:[function(require,module,exports){
-// MS BGD 2019-2020 - HIROTO YAMAKAWA 
-var d3 = require("d3")
-
-var x, 
-    y, 
-    yAxis,
-    xAxis,
-    xaxislabel, 
-    yaxislabel, 
-    svg,
-    i,
-    topData, 
-    mouseover, 
-    mouseout
-
-var format = d3.format(',')
-
-function top10(data){
-
-  // set the and margins of the graph
-  var margin = {top: 10, right: 30, bottom: 40, left: 100},
-      width = 1000 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
-
-  // append the svg object to the body of the page
-  svg = d3.select("#top10")
-      .append("svg")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // create variables
-  x = d3.scaleLinear()
-  .range([ 0, width]);
-
-  y = d3.scaleBand()
-  .range([ 0, height ])
-  .padding(1);
-
-  // create labels
-  yaxislabel =svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("transform", "rotate(0)")
-  .attr("y", 0)
-  .attr("x", -15);        
-
-  xaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("x", width)
-  .attr("y", height + margin.top + 20);
-      
-  // create axis
-  xAxis = svg.append("g")
-  .call(d3.axisLeft(x))
-  .attr("transform", "translate(0," + height + ")");
-
-  yAxis = svg.append("g")
-  .call(d3.axisLeft(y));
-
-  // set i to "revenue" (default choice)
-  i = "revenue"
-
-  // create mouseover and mouseout functions
-  mouseover = function(d){
-    tooltip.transition()    
-    .duration(200)    
-    .style("opacity", 1);
-
-    tooltip .html("name: " + d.name + "<br/>" + i + " : " + format(d[i]) + "<br/>" + "genre : "+ d.genre)
-    .style("left", (d3.event.pageX + 10) + "px")
-    .style("top", (d3.event.pageY - 15) + "px")
-
-    }
-
-  mouseout = function(d){
-    tooltip.transition()    
-    .duration(200)    
-    .style("opacity", 0)
-  }
-
-  // create tooltips
-  var tooltip = d3.select("body")
-      .append("div")  
-      .style('position','absolute')
-      .style("opacity", 0)
-      .style("background-color", "lightsteelblue")
-      .style("border", "solid")
-      .style("border-width", "1px")
-      .style("border-radius", "5px")
-      .style("padding", "10px");
-    
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-   //./data/tmdb-movie-metadata/tmdb_5000_movies.csv
-    //initiate graph
-  initialGraph(data);
-
-    //update graph based on selection from HTML dragdown
-  //d3.select("#label-option").on("change", () => change(data));
-
-  topData = data.slice(0, 20)
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // create function initialGraph
-  function initialGraph(data){
-
-    var selectValue = d3.select('select').property('value')
-
-    // select topData based on i
-    var topData = data.sort(function(a, b) {
-      return d3.descending(+a[i], +b[i]);
-      }).slice(0, 21);
-
-    // rescale the domain
-    x.domain([0, d3.max(topData, function(d) { return d[i] ;} )]);
-    y.domain(topData.map(function(d) { return d.name; }));
-
-    
-    //initiate X axis
-    xAxis
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .attr("transform", "translate(-10,0)rotate(-20)")
-    .style("text-anchor", "end");
-
-    //initiate Y axis
-    yAxis
-    .call(d3.axisLeft(y));
-
-
-    //initiate X axis label
-    xaxislabel.text(i);
-
-    //initiate Y axis label
-    yaxislabel.text("movies");
-
-    //initiate bars, all starting at 0 at the beginning
-    svg.selectAll(".bar")
-    .data(topData)
-    .enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x",  function(d) {return  x(0);})
-    .attr("y", function(d) { return y(d.name); })
-    .attr("width",function(d){return x(0);} )
-    .attr("height", 15)
-    .on("mouseover", mouseover)
-    .on("mouseout", mouseout);
-
-
-    //update the bar with the transition
-    svg.selectAll(".bar")
-    .transition()
-    .duration(500)
-    .attr("width",function(d) { return  x(d[i]);}  )
-    .attr("y", function(d) { return y(d.name); })
-    .attr("height", 15)
-    .attr("fill", function(d) {
-      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});;
-
-    // add label next to bar
-    svg.append("g")
-      .attr("fill", "white")
-      .attr("text-anchor", "end")
-      .style("font", "12px sans-serif")
-    .selectAll("label-top10")
-    .data(topData)
-    .enter().append("text")
-    .attr("class", "label-top10")
-    .attr("x", d => x(d[i]) - 4)
-    .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
-    .text(d => format(d[i]));
-
-  };
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-}
-
-//create update function 
-
-function change(data) {
-
-  var selectValue = d3.select('#label-option').property('value');
-  //update topData
-
-  var remake
-
-  if (topData.length < 20){
-    remake = true
-  }else{
-    remake = false
-  }
-
-  topData = data.sort(function(a, b) {
-    return d3.descending(+a[selectValue], +b[selectValue]);
-  }).slice(0, 20);
-
-
-  // update x and y domain / scale       
-  x
-  .domain([0, d3.max(topData, function(d) { return d[selectValue] ;} )])
-  .call(d3.axisBottom(x));
-    
-  y
-  .domain(topData.map(function(d) { return d.name; }))
-  .call(d3.axisLeft(y));
-    
-
-  // Update x axis label   (y axis remains unchanged)
-  xaxislabel
-  .attr("text-anchor", "end")
-  .text(selectValue);
-  
-  
-  // Update the Y-axis and X-axis
-  yAxis
-  .transition()
-  .duration(1500)
-  .call(d3.axisLeft(y));
-  
-  xAxis
-  .transition()
-  .duration(1500)
-  .call(d3.axisBottom(x))
-  .selectAll("text")
-  .attr("transform", "translate(-10,0)rotate(-20)")
-  .style("text-anchor", "end");
-
-  
-  // console.log(d3.event, d3.event.target == d3.select('#label-option')._groups[0][0], d3.select('#label-option')._groups[0][0])
-
-  var event_is_select = d3.event.target == d3.select('#label-option')._groups[0][0]
-  // console.log(event_is_select)
-  if (remake){
-
-    var bar = svg.selectAll('.bar')
-    bar.remove()
-
-    svg.selectAll(".bar")
-        .data(topData)
-        .enter()
-        .append("rect")
-        .attr("class", "bar")
-        .attr("x",  function(d) {return  x(0);})
-        .attr("y", function(d) { return y(d.name); })
-        .attr("width",function(d){return x(0);} )
-        .attr("height", 15)
-        .on("mouseover", mouseover)
-        .on("mouseout", mouseout);
-
-    svg.selectAll(".bar")
-      .transition()
-      .duration(500)
-      .attr("width",function(d) { return  x(d[i]);}  )
-      .attr("y", function(d) { return y(d.name); })
-      .attr("height", 15)
-      .attr("fill", function(d) {
-      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});
-
-  }else{
-    var bar = svg.selectAll('.bar').data(topData);
-    bar.exit().remove(); 
-    // Update data:
-    bar
-    .transition()
-    .duration(500)
-    .attr("x",  function(d) {return  x(0);})
-    .attr("y", function(d) { return y(d.name); })
-    .attr("width",function(d){return x(0);} )
-    .attr("width",function(d) { return  x(d[selectValue]);}  )
-    .attr("height", 15)
-    .attr("fill", function(d) {
-      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});
-  }
-
-  // add label next to bar
-
-  var textlabel = svg.selectAll(".label-top10").data(topData)
-  textlabel.exit().remove()
-
-  textlabel.transition().duration(300)
-    .attr("x", d => x(d[selectValue]) - 4)
-    .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
-    .text(d => format(d[selectValue]));
-
-}
-
-module.exports.top10 = top10; 
-module.exports.change = change; 
-
-// export default {top10, change};
-  
-
-  
-       
-
-},{"d3":42}],45:[function(require,module,exports){
-var d3 = require("d3"),
-    cloud = require("d3-cloud");
-
-function wordcloud(data){
-  var wordsMap = {};
-  var words = [];
-
-  data.map(function(d){
-    d.text.map(word => {
-      if (wordsMap.hasOwnProperty(word)) {
-        wordsMap[word]++;
-      } else {
-        wordsMap[word] = 1;
-      }
-    }) 
-  })
-  for (const [key, value] of Object.entries(wordsMap)) {
-    words.push({text: key, size: 5 + wordsMap[key]})
-  }
-
-  words = words.sort(function(a, b){
-    return b.size - a.size
-  })
-
-  var layout = cloud()
-    .size([900, 500])
-    .words(words.slice(0, 100))
-    .padding(5)
-    .font("Impact")
-    .rotate(function() { return ~~(Math.random() * 2) * 45; })
-    .fontSize(function(d) { return d.size; })
-    .on("end", draw);
-
-  layout.start();
-
-  function draw(words) {
-    d3.select("#wordcloud").append("svg")
-        .attr("width", layout.size()[0])
-        .attr("height", layout.size()[1])
-      .append("g")
-        .attr("transform", "translate(" + layout.size()[0] / 2 + "," + layout.size()[1] / 2 + ")")
-      .selectAll("text")
-        .data(words)
-      .enter().append("text")
-        .style("font-size", function(d) { return d.size + "px"; })
-        .style("font-family", "Impact")
-        .attr("text-anchor", "middle")
-        .attr("transform", function(d) {
-          return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
-        })
-        .text(function(d) { return d.text; });
-    };
-}
-
-  function change(data){
-    d3.select("#wordcloud").selectAll("svg > *").remove();
-    wordcloud(data)
-  }
-
-module.exports.wordcloud = wordcloud;
-module.exports.change = change;
-
-},{"d3":42,"d3-cloud":8}]},{},[2]);
+},{"d3-array":7,"d3-axis":8,"d3-brush":9,"d3-chord":10,"d3-collection":12,"d3-color":13,"d3-contour":14,"d3-dispatch":15,"d3-drag":16,"d3-dsv":17,"d3-ease":18,"d3-fetch":19,"d3-force":20,"d3-format":21,"d3-geo":22,"d3-hierarchy":23,"d3-interpolate":24,"d3-path":25,"d3-polygon":26,"d3-quadtree":27,"d3-random":28,"d3-scale":30,"d3-scale-chromatic":29,"d3-selection":31,"d3-shape":32,"d3-time":40,"d3-time-format":39,"d3-timer":41,"d3-transition":42,"d3-voronoi":43,"d3-zoom":44}]},{},[2]);

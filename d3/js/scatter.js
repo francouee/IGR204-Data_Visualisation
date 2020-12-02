@@ -11,9 +11,9 @@ var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
 var xx = 20
-var margin = {top: 10+xx, right: 30+xx, bottom: 30+xx, left: 60+xx},
-    width = 1200, //- margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom,
+var margin = {top: 50+xx, right: xx, bottom: xx - 10, left: 100+xx},
+    width = document.body.clientWidth/2 - margin.left - margin.right,
+    height = document.body.clientHeight/3 - margin.top - margin.bottom,
     data_path = "../tmdb_5000_movies.csv",
     x, 
     y,
@@ -25,10 +25,10 @@ var margin = {top: 10+xx, right: 30+xx, bottom: 30+xx, left: 60+xx},
     mouseout;
 
 // append the svg object to the body of the page
-var svg = d3.select("#scatter_plot")
+var svg = d3.select("#scatter_plot").style("height", height + margin.top + margin.bottom + 'px')
   .append("svg")
     .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
+    .attr("height", height + margin.top + margin.bottom + 20)
   .append("g")
     .attr("transform",
     "translate(" + margin.left + "," + margin.top + ")");
@@ -138,24 +138,11 @@ function scatter(data){
 
  xAxis = svg.append("g")
  .call(d3.axisBottom(x))
- .attr("transform", "translate(0," + height + ")");
+ .attr("transform", "translate(0," + height + ")")
 
  yAxis = svg.append("g")
   .call(d3.axisLeft(y));
   
-xaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("x", width - margin.right - margin.left)
-  .attr("y", height + margin.top)
-  .text(i);
-
-yaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("transform", "rotate(0)")
-  .attr("y", 0)
-  .attr("x", -10)
-  .text(j);
-
   // Add dots
 
   svg.append('g')
@@ -171,14 +158,6 @@ yaxislabel = svg.append("text")
       .style("fill", (d) => myColor(d.genre))
     .on("mouseover", mouseover)
     .on("mouseout", mouseout);
-    /*
-    .on("mouseover", showTooltip )
-    .on("mousemove", moveTooltip )
-    .on("mouseleave", hideTooltip )
-    */
-
-  //d3.select("#X_axis_scatter").on("change", () => change(data));
-  //d3.select("#Y_axis_scatter").on("change", () => change(data));
 
 }
 

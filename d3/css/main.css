@@ -44,11 +44,10 @@ canvas, svg {
 #main {
   background-color: #f5f6f4;
 }
-/*
-#main>div{
-  background-color: #457B9D;
+
+.oddrow {
+  background-color: #EDF6F9;
 }
-*/
 
 /* SCATTERPLOT */
 
@@ -82,7 +81,6 @@ div.tooltip {
   }
 
 /* SCATTERPLOT */
-
 
 
 .brush rect.extent {
@@ -244,9 +242,10 @@ button#exclude-data:hover {
   width: 268px;
   float: left;
 }
+
 #header {
   border-bottom: 1px solid rgba(100,100,100,0.35);
-  background: #1D3557;
+  background: #112E4A;
   padding: 6px 24px 4px;
   line-height: 24px;
   color: white;

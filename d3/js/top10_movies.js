@@ -18,17 +18,19 @@ var format = d3.format(',')
 function top10(data){
 
   // set the and margins of the graph
-  var margin = {top: 10, right: 30, bottom: 40, left: 100},
-      width = 1000 - margin.left - margin.right,
-      height = 500 - margin.top - margin.bottom;
+  var margin = {top: 20, right: 80, bottom: 20, left: 230},
+      width = document.body.clientWidth/2 - margin.left - margin.right,
+      height = document.body.clientHeight/3 - margin.top - margin.bottom
 
   // append the svg object to the body of the page
   svg = d3.select("#top10")
+      .style("height", height + margin.top + margin.bottom + 'px')
       .append("svg")
       .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
+      .attr("height", height + margin.top + margin.bottom + 20)
       .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+      
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -126,7 +128,6 @@ function top10(data){
     xAxis
     .call(d3.axisBottom(x))
     .selectAll("text")
-    .attr("transform", "translate(-10,0)rotate(-20)")
     .style("text-anchor", "end");
 
     //initiate Y axis
