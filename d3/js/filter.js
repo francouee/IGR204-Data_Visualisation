@@ -39,7 +39,7 @@ var colors = {
 function filterdata(data){
 
   var width = document.body.clientWidth,
-      height = document.body.clientHeight/5
+      height = document.body.clientHeight/4
 
   var m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width],
       w = width,
@@ -656,7 +656,7 @@ function filterdata(data){
   // scale to window size
   window.onresize = function() {
     width = document.body.clientWidth
-    height = document.body.clientHeight / 5;
+    height = document.body.clientHeight / 4;
     m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width]
 
     w = width - m[1] - m[3],

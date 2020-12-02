@@ -20,7 +20,7 @@ function top10(data){
   // set the and margins of the graph
   var margin = {top: 20, right: 80, bottom: 20, left: 230},
       width = document.body.clientWidth/2 - margin.left - margin.right,
-      height = document.body.clientHeight/3 - margin.top - margin.bottom
+      height = document.body.clientHeight/2 - margin.top - margin.bottom
 
   // append the svg object to the body of the page
   svg = d3.select("#top10")

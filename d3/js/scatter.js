@@ -13,7 +13,7 @@ var d3 = require("d3")
 var xx = 20
 var margin = {top: 50+xx, right: xx, bottom: xx - 10, left: 100+xx},
     width = document.body.clientWidth/2 - margin.left - margin.right,
-    height = document.body.clientHeight/3 - margin.top - margin.bottom,
+    height = document.body.clientHeight/2 - margin.top - margin.bottom,
     data_path = "../tmdb_5000_movies.csv",
     x, 
     y,
@@ -45,43 +45,6 @@ var myColor = d3.scaleOrdinal()
   'Science Fiction', 'Foreign', 'Music', 'Thriller'])
   .range(d3.schemeSet2);
 
-/*
-// -1- Create a tooltip div that is hidden by default:
-var tooltip = d3.select("#scatter_plot")
-  .append("div")
-    .style("opacity", 0)
-    .attr("class", "tooltip")
-    .style("background-color", "blue")
-    .style("border-radius", "5px")
-    .style("padding", "5px")
-    .style("color", "white")
-
-// -2- Create 3 functions to show / update (when mouse move but stay on same circle) / hide the tooltip
-var showTooltip = function (d) {
-  tooltip
-    .transition()
-    .duration(200)
-  tooltip
-    .style("opacity", 0.8)
-    .html("<b>Title: </b>" + d.name + "<br/>" 
-    + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
-    + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
-    + d.genre)
-    .style("left", (d3.mouse(this)[0] + 30) + "px")
-    .style("top", (d3.mouse(this)[1] + 30) + "px")
-}
-var moveTooltip = function (d) {
-  tooltip
-    .style("left", (d3.mouse(this)[0] + 30) + "px")
-    .style("top", (d3.mouse(this)[1] + 30) + "px")
-}
-var hideTooltip = function (d) {
-  tooltip
-    .transition()
-    .duration(200)
-    .style("opacity", 0)
-}
-*/
 
 mouseover = function(d){
   tooltip.transition()    
@@ -194,14 +157,7 @@ function change(data) {
   .call(d3.axisLeft(y))
   .selectAll("text")
   .style("text-anchor", "middle");
-  
-  xaxislabel
-    .attr("text-anchor", "middle")
-    .text(selectValueX);
 
-  yaxislabel
-    .attr("text-anchor", "end")
-    .text(selectValueY);
   
   var dots = d3.selectAll(".bubbles").data(topData)
 
