@@ -65,11 +65,14 @@ function top10(data){
     tooltip.transition()    
     .duration(200)    
     .style("opacity", 1);
-
-    tooltip .html("name: " + d.name + "<br/>" + i + " : " + format(d[i]) + "<br/>" + "genre : "+ d.genre)
+  
+    tooltip .html("<b>Title: </b>" + d.name + "<br/>" 
+    + "<b>Budget: </b>" + "$ "+Math.round(d.budget * 1000) / 1000 +" M "+ "<br/>" 
+    + "<b>Revenue: </b>" + "$ "+Math.round(d.revenue * 1000) / 1000+" M " + "<br/>"
+    + d.genre)
     .style("left", (d3.event.pageX + 10) + "px")
     .style("top", (d3.event.pageY - 15) + "px")
-
+  
     }
 
   mouseout = function(d){

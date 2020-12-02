@@ -863,16 +863,16 @@ function map(data){
 
     color_scale = d3.scaleLog()
         .domain([1, country_max])
-        .range([d3.interpolateYlGnBu(0), d3.interpolateYlGnBu(1)])
+        .range([d3.interpolateBlues(0), d3.interpolateBlues(1)])
 
     var map_legend = d3legend.legendColor()
         .scale(color_scale);
 
     var margin = { top: 50, left:50, right: 50, bottom: 50},
-        height = 400 - margin.top - margin.bottom,
-        width = 800 - margin.left - margin.right;
+        width = document.body.clientWidth/2 - margin.left - margin.right,
+        height = document.body.clientHeight/2 - margin.top - margin.bottom
 
-    var svg = d3.select("#map")
+    var svg = d3.select("#map").style("height", height + margin.top + margin.bottom + 'px')
         .append("svg")
         .attr("height", height + margin.top + margin.bottom)
         .attr("width", width + margin.left + margin.right)
@@ -1051,8 +1051,8 @@ mouseover = function(d){
   .style("opacity", 1);
 
   tooltip .html("<b>Title: </b>" + d.name + "<br/>" 
-  + "<b>Budget: </b>" + "$ "+Math.ceil(d.budget) / 10**6 +" M "+ "<br/>" 
-  + "<b>Revenue: </b>" + "$ "+Math.ceil(d.revenue / 10**6)+" M " + "<br/>"
+  + "<b>Budget: </b>" + "$ "+Math.round(d.budget * 1000) / 1000 +" M "+ "<br/>" 
+  + "<b>Revenue: </b>" + "$ "+Math.round(d.revenue * 1000) / 1000+" M " + "<br/>"
   + d.genre)
   .style("left", (d3.event.pageX + 10) + "px")
   .style("top", (d3.event.pageY - 15) + "px")
@@ -1247,11 +1247,14 @@ function top10(data){
     tooltip.transition()    
     .duration(200)    
     .style("opacity", 1);
-
-    tooltip .html("name: " + d.name + "<br/>" + i + " : " + format(d[i]) + "<br/>" + "genre : "+ d.genre)
+  
+    tooltip .html("<b>Title: </b>" + d.name + "<br/>" 
+    + "<b>Budget: </b>" + "$ "+Math.round(d.budget * 1000) / 1000 +" M "+ "<br/>" 
+    + "<b>Revenue: </b>" + "$ "+Math.round(d.revenue * 1000) / 1000+" M " + "<br/>"
+    + d.genre)
     .style("left", (d3.event.pageX + 10) + "px")
     .style("top", (d3.event.pageY - 15) + "px")
-
+  
     }
 
   mouseout = function(d){
