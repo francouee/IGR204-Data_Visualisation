@@ -48,11 +48,6 @@ function top10(data){
   .attr("transform", "rotate(0)")
   .attr("y", 0)
   .attr("x", -15);        
-
-  xaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("x", width)
-  .attr("y", height + margin.top + 20);
       
   // create axis
   xAxis = svg.append("g")
@@ -133,10 +128,6 @@ function top10(data){
     //initiate Y axis
     yAxis
     .call(d3.axisLeft(y));
-
-
-    //initiate X axis label
-    xaxislabel.text(i);
 
     //initiate Y axis label
     yaxislabel.text("movies");

@@ -12,7 +12,7 @@ var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
 var xx = 20
-var margin = {top: 50+xx, right: xx, bottom: xx - 10, left: 100+xx},
+var margin = {top: 50+xx, right: xx - 20, bottom: xx - 10, left: 100+xx},
     width = document.body.clientWidth/2 - margin.left - margin.right,
     height = document.body.clientHeight/2 - margin.top - margin.bottom,
     data_path = "../tmdb_5000_movies.csv",

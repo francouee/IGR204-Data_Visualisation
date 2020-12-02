@@ -1010,7 +1010,7 @@ var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
 var xx = 20
-var margin = {top: 50+xx, right: xx, bottom: xx - 10, left: 100+xx},
+var margin = {top: 50+xx, right: xx - 20, bottom: xx - 10, left: 100+xx},
     width = document.body.clientWidth/2 - margin.left - margin.right,
     height = document.body.clientHeight/2 - margin.top - margin.bottom,
     data_path = "../tmdb_5000_movies.csv",
@@ -1230,11 +1230,6 @@ function top10(data){
   .attr("transform", "rotate(0)")
   .attr("y", 0)
   .attr("x", -15);        
-
-  xaxislabel = svg.append("text")
-  .attr("text-anchor", "end")
-  .attr("x", width)
-  .attr("y", height + margin.top + 20);
       
   // create axis
   xAxis = svg.append("g")
@@ -1315,10 +1310,6 @@ function top10(data){
     //initiate Y axis
     yAxis
     .call(d3.axisLeft(y));
-
-
-    //initiate X axis label
-    xaxislabel.text(i);
 
     //initiate Y axis label
     yaxislabel.text("movies");
