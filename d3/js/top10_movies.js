@@ -201,13 +201,6 @@ function change(data) {
   y
   .domain(topData.map(function(d) { return d.name; }))
   .call(d3.axisLeft(y));
-    
-
-  // Update x axis label   (y axis remains unchanged)
-  xaxislabel
-  .attr("text-anchor", "end")
-  .text(selectValue);
-  
   
   // Update the Y-axis and X-axis
   yAxis
