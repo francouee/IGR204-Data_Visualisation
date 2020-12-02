@@ -1005,6 +1005,7 @@ References :
 
 // set the dimensions and margins of the graph
 
+const { transition } = require("d3");
 var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
@@ -1163,7 +1164,7 @@ function change(data) {
 
   dots.attr("cx", function(d) {return  x(d[i]);})
   //.attr("cy", (d) => y(d.budget))
-      .attr("cy", function(d) {return  y(d[j]);})
+      .attr("cy", function(d) {return  y(d[j]);}).transition().duration(200)
       .attr("r", (d) => rscale(d.popularity))
       .style("fill", "#141AC9")
       .style("fill", (d) => myColor(d.genre))
