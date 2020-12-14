@@ -47,7 +47,6 @@ function filterdata(data){
       xscale = d3.scaleBand().rangeRound([15, width-15], 1),
       yscale = {},
       dragging = {},
-      line = d3.line(),
       axis = d3.axisLeft().ticks(1+height/50),
       selected,
       foreground,
@@ -55,7 +54,6 @@ function filterdata(data){
       highlighted,
       dimensions,
       extents,                           
-      legend,
       render_speed = 50,
       brush_count = 0,
       excluded_groups = [];
@@ -654,12 +652,12 @@ function filterdata(data){
   }
 
   // scale to window size
-  window.onresize = function() {
+  function resize() {
     width = document.body.clientWidth
     height = document.body.clientHeight / 4;
     m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width]
 
-    w = width - m[1] - m[3],
+    w = width 
     h = height - m[0] - m[2];
 
     d3.select("#chart")
@@ -676,7 +674,7 @@ function filterdata(data){
       .select("g")
         .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
     
-    xscale = d3.scaleBand().rangeRound([0, w], 1).domain(dimensions);
+    xscale = d3.scaleBand().rangeRound([15, width-15], 1).domain(dimensions);
     dimensions.forEach(function(d) {
       yscale[d].range([h, 0]);
     });
@@ -697,6 +695,9 @@ function filterdata(data){
     // render data
     brush();
   };
+
+
+  window.addEventListener('resize', resize)
 
   // Remove all but selected from the dataset
   function keep_data() {

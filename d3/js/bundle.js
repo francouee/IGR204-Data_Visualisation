@@ -48,7 +48,6 @@ function filterdata(data){
       xscale = d3.scaleBand().rangeRound([15, width-15], 1),
       yscale = {},
       dragging = {},
-      line = d3.line(),
       axis = d3.axisLeft().ticks(1+height/50),
       selected,
       foreground,
@@ -56,7 +55,6 @@ function filterdata(data){
       highlighted,
       dimensions,
       extents,                           
-      legend,
       render_speed = 50,
       brush_count = 0,
       excluded_groups = [];
@@ -655,12 +653,12 @@ function filterdata(data){
   }
 
   // scale to window size
-  window.onresize = function() {
+  function resize() {
     width = document.body.clientWidth
     height = document.body.clientHeight / 4;
     m = [0.3 * height,  0.3*width , 0.1*height, 0.1*width]
 
-    w = width - m[1] - m[3],
+    w = width 
     h = height - m[0] - m[2];
 
     d3.select("#chart")
@@ -677,7 +675,7 @@ function filterdata(data){
       .select("g")
         .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
     
-    xscale = d3.scaleBand().rangeRound([0, w], 1).domain(dimensions);
+    xscale = d3.scaleBand().rangeRound([15, width-15], 1).domain(dimensions);
     dimensions.forEach(function(d) {
       yscale[d].range([h, 0]);
     });
@@ -698,6 +696,9 @@ function filterdata(data){
     // render data
     brush();
   };
+
+
+  window.addEventListener('resize', resize)
 
   // Remove all but selected from the dataset
   function keep_data() {
@@ -1187,15 +1188,17 @@ var x,
     y, 
     yAxis,
     xAxis,
-    xaxislabel, 
     yaxislabel, 
     svg,
     i,
     topData, 
     mouseover, 
-    mouseout
+    mouseout,
+    width,
+    height
 
 var format = d3.format(',')
+var n_rows = Math.ceil(document.body.clientHeight / 50)
 
 function top10(data){
 
@@ -1234,7 +1237,8 @@ function top10(data){
   // create axis
   xAxis = svg.append("g")
   .call(d3.axisLeft(x))
-  .attr("transform", "translate(0," + height + ")");
+  .attr("transform", "translate(0," + height + ")")
+  .attr("id", "x-axis-top-10")
 
   yAxis = svg.append("g")
   .call(d3.axisLeft(y));
@@ -1285,7 +1289,7 @@ function top10(data){
     //update graph based on selection from HTML dragdown
   //d3.select("#label-option").on("change", () => change(data));
 
-  topData = data.slice(0, 20)
+  topData = data.slice(0, n_rows)
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1297,7 +1301,7 @@ function top10(data){
     // select topData based on i
     var topData = data.sort(function(a, b) {
       return d3.descending(+a[i], +b[i]);
-      }).slice(0, 21);
+      }).slice(0, n_rows);
 
     // rescale the domain
     x.domain([0, d3.max(topData, function(d) { return d[i] ;} )]);
@@ -1354,8 +1358,10 @@ function top10(data){
     .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
     .text(d => format(d[i]));
 
+    window.addEventListener('resize', () => resize(data))
+
   };
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+
 }
 
 //create update function 
@@ -1367,7 +1373,7 @@ function change(data) {
 
   var remake
 
-  if (topData.length < 20){
+  if (topData.length < n_rows){
     remake = true
   }else{
     remake = false
@@ -1375,7 +1381,7 @@ function change(data) {
 
   topData = data.sort(function(a, b) {
     return d3.descending(+a[selectValue], +b[selectValue]);
-  }).slice(0, 20);
+  }).slice(0, n_rows);
 
 
   // update x and y domain / scale       
@@ -1404,8 +1410,6 @@ function change(data) {
   
   // console.log(d3.event, d3.event.target == d3.select('#label-option')._groups[0][0], d3.select('#label-option')._groups[0][0])
 
-  var event_is_select = d3.event.target == d3.select('#label-option')._groups[0][0]
-  // console.log(event_is_select)
   if (remake){
 
     var bar = svg.selectAll('.bar')
@@ -1459,6 +1463,39 @@ function change(data) {
     .text(d => format(d[selectValue]));
 
 }
+
+function resize(data) {
+  width = document.body.clientWidth / 2
+  height = document.body.clientHeight / 2;
+  var margin = {top: 0.1 * height,  right: 0.3*width , bottom: 0.1*height, left:0.1*width}
+
+  var w = width 
+  var h = height - margin["top"] - margin["bottom"];
+
+  n_rows = Math.ceil(height * 2 / 50)
+
+  d3.select("#top10")
+      .style("height", height + margin.top + margin.bottom + 'px')
+      .select("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom + 20)
+      .select("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+  
+  x = d3.scaleLinear()
+  .range([ 0, w / 1.4]);
+
+  y = d3.scaleBand()
+  .range([ 0, height])
+  .padding(1);
+
+  d3.select("#x-axis-top-10")
+    .call(d3.axisLeft(x))
+    .attr("transform", "translate(0," + height + ")")
+  
+
+  change(data) 
+};
 
 module.exports.top10 = top10; 
 module.exports.change = change; 
