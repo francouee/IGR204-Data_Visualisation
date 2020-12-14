@@ -661,7 +661,7 @@ function filterdata(data){
     h = height - m[0] - m[2];
 
     d3.select("#chart")
-        .style("height", (h + m[0] + m[2]) + "px")
+        .style("height", (height) + "px")
 
     d3.selectAll("canvas")
         .attr("width", w)

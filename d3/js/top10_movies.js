@@ -20,9 +20,9 @@ var n_rows = Math.ceil(document.body.clientHeight / 50)
 function top10(data){
 
   // set the and margins of the graph
-  var margin = {top: 20, right: 80, bottom: 20, left: 230},
-      width = document.body.clientWidth/2 - margin.left - margin.right,
-      height = document.body.clientHeight/2 - margin.top - margin.bottom
+  var width = document.body.clientWidth / 2
+  var height = document.body.clientHeight / 2;
+  var margin = {top: 0.05 * height,  right: 0.3*width , bottom: 0.1*height, left:0.13*width}
 
   // append the svg object to the body of the page
   svg = d3.select("#top10")
@@ -38,10 +38,10 @@ function top10(data){
 
   // create variables
   x = d3.scaleLinear()
-  .range([ 0, width]);
+  .range([ 0, width / 1.4]);
 
   y = d3.scaleBand()
-  .range([ 0, height ])
+  .range([ 0, height])
   .padding(1);
 
   // create labels
@@ -284,10 +284,7 @@ function change(data) {
 function resize(data) {
   width = document.body.clientWidth / 2
   height = document.body.clientHeight / 2;
-  var margin = {top: 0.1 * height,  right: 0.3*width , bottom: 0.1*height, left:0.1*width}
-
-  var w = width 
-  var h = height - margin["top"] - margin["bottom"];
+  margin = {top: 0.05 * height,  right: 0.3*width , bottom: 0.1*height, left:0.13*width}
 
   n_rows = Math.ceil(height * 2 / 50)
 
@@ -300,7 +297,7 @@ function resize(data) {
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
   
   x = d3.scaleLinear()
-  .range([ 0, w / 1.4]);
+  .range([ 0, width / 1.4]);
 
   y = d3.scaleBand()
   .range([ 0, height])
@@ -309,7 +306,6 @@ function resize(data) {
   d3.select("#x-axis-top-10")
     .call(d3.axisLeft(x))
     .attr("transform", "translate(0," + height + ")")
-  
 
   change(data) 
 };

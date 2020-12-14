@@ -11,20 +11,18 @@ const { transition } = require("d3");
 var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
-var xx = 20
-var margin = {top: 50+xx, right: xx - 20, bottom: xx - 10, left: 100+xx},
-    width = document.body.clientWidth/2 - margin.left - margin.right,
-    height = document.body.clientHeight/2 - margin.top - margin.bottom,
-    data_path = "../tmdb_5000_movies.csv",
+var w = document.body.clientWidth / 2,
+    h = document.body.clientHeight / 2,
+    margin = {top: 0.12 * h,  right: 0.01*w , bottom: 0.02*h, left:0.1*w},
     x, 
     y,
     xAxis,
     yAxis,
-    xaxislabel, 
-    yaxislabel,
     mouseover, 
     mouseout;
 
+var width = w - margin.left - margin.right,
+    height = h - margin.top - margin.bottom
 // append the svg object to the body of the page
 var svg = d3.select("#scatter_plot").style("height", height + margin.top + margin.bottom + 'px')
   .append("svg")

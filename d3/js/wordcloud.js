@@ -22,8 +22,11 @@ function wordcloud(data){
     return b.size - a.size
   })
 
+  var width = document.body.clientWidth/2,
+      height = document.body.clientHeight/2
+
   var layout = cloud()
-    .size([900, 500])
+    .size([width, height])
     .words(words.slice(0, 100))
     .padding(5)
     .font("Impact")

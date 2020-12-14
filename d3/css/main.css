@@ -18,6 +18,11 @@ body.dark {
 a {
   text-decoration: none;
 }
+
+select {
+  font-size:7pt !important;
+}
+
 .dark a {
   color: #5ae;
 }

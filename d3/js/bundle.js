@@ -662,7 +662,7 @@ function filterdata(data){
     h = height - m[0] - m[2];
 
     d3.select("#chart")
-        .style("height", (h + m[0] + m[2]) + "px")
+        .style("height", (height) + "px")
 
     d3.selectAll("canvas")
         .attr("width", w)
@@ -869,37 +869,23 @@ function map(data){
     var map_legend = d3legend.legendColor()
         .scale(color_scale);
 
-    var margin = { top: 50, left:50, right: 50, bottom: 50},
-        width = document.body.clientWidth/2 - margin.left - margin.right,
-        height = document.body.clientHeight/2 - margin.top - margin.bottom
+    var w = document.body.clientWidth/2,
+        h = document.body.clientHeight/2,
+        margin = {top: 0.1 * h,  right: 0.1*w , bottom: 0.1*h, left:0.1*w}
+    
+    var width = w - margin.left - margin.right,
+        height = h - margin.top - margin.bottom
 
-    var svg = d3.select("#map").style("height", height + margin.top + margin.bottom + 'px')
+    var svg = d3.select("#map").style("height", h + 'px')
         .append("svg")
-        .attr("height", height + margin.top + margin.bottom)
-        .attr("width", width + margin.left + margin.right)
+        .attr("height", h)
+        .attr("width", w)
         .append("g")
         .attr("transform", "translate("+ margin.left + "," + margin.top + ")");
     
     //Read Data
     d3.json("./data/map/countries.json").then((d) => {
         ready( d , country_count)
-
-        //Color Legend container
-        // var legendsvg = svg.append("g")
-        //     .attr("class", "legendWrapper")
-        //     .attr("transform", "translate(" + (width - 50) + "," + 70 + ")");
-
-        // console.log(map_legend)
-        
-        // legendsvg.append("g")
-        //     .call(map_legen  d)
-            
-        // //Append title
-        // legendsvg.append("text")
-        //     .attr("class", "legendTitle")
-        //     .attr("x", 0)
-        //     .attr("y", -2)
-        //     .text("Legend");
     })
 
     //Create projection and center it (translate) and scaleit
@@ -952,7 +938,7 @@ function change(data){
 
         color_scale = d3.scaleLog()
         .domain([1, country_max])
-        .range([d3.interpolateYlGnBu(0), d3.interpolateYlGnBu(1)])
+        .range([d3.interpolateBlues(0), d3.interpolateBlues(1)])
 
         // Transform raw country_data
         var countries = topojson.feature(country_data, country_data.objects.units).features
@@ -1010,20 +996,18 @@ const { transition } = require("d3");
 var d3 = require("d3")
 // var d3chromatic = require("d3-scale-chromatic")
 
-var xx = 20
-var margin = {top: 50+xx, right: xx - 20, bottom: xx - 10, left: 100+xx},
-    width = document.body.clientWidth/2 - margin.left - margin.right,
-    height = document.body.clientHeight/2 - margin.top - margin.bottom,
-    data_path = "../tmdb_5000_movies.csv",
+var w = document.body.clientWidth / 2,
+    h = document.body.clientHeight / 2,
+    margin = {top: 0.12 * h,  right: 0.01*w , bottom: 0.02*h, left:0.1*w},
     x, 
     y,
     xAxis,
     yAxis,
-    xaxislabel, 
-    yaxislabel,
     mouseover, 
     mouseout;
 
+var width = w - margin.left - margin.right,
+    height = h - margin.top - margin.bottom
 // append the svg object to the body of the page
 var svg = d3.select("#scatter_plot").style("height", height + margin.top + margin.bottom + 'px')
   .append("svg")
@@ -1203,9 +1187,9 @@ var n_rows = Math.ceil(document.body.clientHeight / 50)
 function top10(data){
 
   // set the and margins of the graph
-  var margin = {top: 20, right: 80, bottom: 20, left: 230},
-      width = document.body.clientWidth/2 - margin.left - margin.right,
-      height = document.body.clientHeight/2 - margin.top - margin.bottom
+  var width = document.body.clientWidth / 2
+  var height = document.body.clientHeight / 2;
+  var margin = {top: 0.05 * height,  right: 0.3*width , bottom: 0.1*height, left:0.13*width}
 
   // append the svg object to the body of the page
   svg = d3.select("#top10")
@@ -1221,10 +1205,10 @@ function top10(data){
 
   // create variables
   x = d3.scaleLinear()
-  .range([ 0, width]);
+  .range([ 0, width / 1.4]);
 
   y = d3.scaleBand()
-  .range([ 0, height ])
+  .range([ 0, height])
   .padding(1);
 
   // create labels
@@ -1467,10 +1451,7 @@ function change(data) {
 function resize(data) {
   width = document.body.clientWidth / 2
   height = document.body.clientHeight / 2;
-  var margin = {top: 0.1 * height,  right: 0.3*width , bottom: 0.1*height, left:0.1*width}
-
-  var w = width 
-  var h = height - margin["top"] - margin["bottom"];
+  margin = {top: 0.05 * height,  right: 0.3*width , bottom: 0.1*height, left:0.13*width}
 
   n_rows = Math.ceil(height * 2 / 50)
 
@@ -1483,7 +1464,7 @@ function resize(data) {
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
   
   x = d3.scaleLinear()
-  .range([ 0, w / 1.4]);
+  .range([ 0, width / 1.4]);
 
   y = d3.scaleBand()
   .range([ 0, height])
@@ -1492,7 +1473,6 @@ function resize(data) {
   d3.select("#x-axis-top-10")
     .call(d3.axisLeft(x))
     .attr("transform", "translate(0," + height + ")")
-  
 
   change(data) 
 };
@@ -1531,8 +1511,11 @@ function wordcloud(data){
     return b.size - a.size
   })
 
+  var width = document.body.clientWidth/2,
+      height = document.body.clientHeight/2
+
   var layout = cloud()
-    .size([900, 500])
+    .size([width, height])
     .words(words.slice(0, 100))
     .padding(5)
     .font("Impact")

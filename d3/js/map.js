@@ -40,37 +40,23 @@ function map(data){
     var map_legend = d3legend.legendColor()
         .scale(color_scale);
 
-    var margin = { top: 50, left:50, right: 50, bottom: 50},
-        width = document.body.clientWidth/2 - margin.left - margin.right,
-        height = document.body.clientHeight/2 - margin.top - margin.bottom
+    var w = document.body.clientWidth/2,
+        h = document.body.clientHeight/2,
+        margin = {top: 0.1 * h,  right: 0.1*w , bottom: 0.1*h, left:0.1*w}
+    
+    var width = w - margin.left - margin.right,
+        height = h - margin.top - margin.bottom
 
-    var svg = d3.select("#map").style("height", height + margin.top + margin.bottom + 'px')
+    var svg = d3.select("#map").style("height", h + 'px')
         .append("svg")
-        .attr("height", height + margin.top + margin.bottom)
-        .attr("width", width + margin.left + margin.right)
+        .attr("height", h)
+        .attr("width", w)
         .append("g")
         .attr("transform", "translate("+ margin.left + "," + margin.top + ")");
     
     //Read Data
     d3.json("./data/map/countries.json").then((d) => {
         ready( d , country_count)
-
-        //Color Legend container
-        // var legendsvg = svg.append("g")
-        //     .attr("class", "legendWrapper")
-        //     .attr("transform", "translate(" + (width - 50) + "," + 70 + ")");
-
-        // console.log(map_legend)
-        
-        // legendsvg.append("g")
-        //     .call(map_legen  d)
-            
-        // //Append title
-        // legendsvg.append("text")
-        //     .attr("class", "legendTitle")
-        //     .attr("x", 0)
-        //     .attr("y", -2)
-        //     .text("Legend");
     })
 
     //Create projection and center it (translate) and scaleit
@@ -123,7 +109,7 @@ function change(data){
 
         color_scale = d3.scaleLog()
         .domain([1, country_max])
-        .range([d3.interpolateYlGnBu(0), d3.interpolateYlGnBu(1)])
+        .range([d3.interpolateBlues(0), d3.interpolateBlues(1)])
 
         // Transform raw country_data
         var countries = topojson.feature(country_data, country_data.objects.units).features
