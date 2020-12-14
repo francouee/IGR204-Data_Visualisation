@@ -12,7 +12,8 @@ var x,
     mouseover, 
     mouseout,
     width,
-    height
+    height,
+    margin
 
 var format = d3.format(',')
 var n_rows = Math.ceil(document.body.clientHeight / 50)
