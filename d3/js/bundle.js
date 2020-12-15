@@ -694,11 +694,11 @@ function filterdata(data){
       .each(function(d) { d3.select(this).call(axis.scale(yscale[d])); });
 
     // render data
-    brush();
+    brush()
   };
 
-
-  window.addEventListener('resize', resize)
+  //TODO: issue with interactions when resize  
+  // window.addEventListener('resize', resize)
 
   // Remove all but selected from the dataset
   function keep_data() {
@@ -1399,6 +1399,8 @@ function resize(data) {
   d3.select("#x-axis-top-10")
     .call(d3.axisLeft(x))
     .attr("transform", "translate(0," + height + ")")
+
+  change(data)
 };
 
 module.exports.top10 = top10; 

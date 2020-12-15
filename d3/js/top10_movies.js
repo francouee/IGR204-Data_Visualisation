@@ -232,6 +232,8 @@ function resize(data) {
   d3.select("#x-axis-top-10")
     .call(d3.axisLeft(x))
     .attr("transform", "translate(0," + height + ")")
+
+  change(data)
 };
 
 module.exports.top10 = top10; 
