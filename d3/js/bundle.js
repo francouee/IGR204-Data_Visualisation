@@ -1180,7 +1180,8 @@ var x,
     mouseout,
     width,
     height,
-    margin
+    margin,
+    n = 0
 
 var format = d3.format(',')
 var n_rows = Math.ceil(document.body.clientHeight / 50)
@@ -1263,89 +1264,13 @@ function top10(data){
       .style("border-radius", "5px")
       .style("padding", "10px");
     
-
-  ////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-   //./data/tmdb-movie-metadata/tmdb_5000_movies.csv
-    //initiate graph
-  initialGraph(data);
-
-    //update graph based on selection from HTML dragdown
-  //d3.select("#label-option").on("change", () => change(data));
-
-  topData = data.slice(0, n_rows)
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-  // create function initialGraph
-  function initialGraph(data){
-
-    var selectValue = d3.select('select').property('value')
-
-    // select topData based on i
-    var topData = data.sort(function(a, b) {
+  topData = data.sort(function(a, b) {
       return d3.descending(+a[i], +b[i]);
       }).slice(0, n_rows);
 
-    // rescale the domain
-    x.domain([0, d3.max(topData, function(d) { return d[i] ;} )]);
-    y.domain(topData.map(function(d) { return d.name; }));
+  change(data);
 
-    
-    //initiate X axis
-    xAxis
-    .call(d3.axisBottom(x))
-    .selectAll("text")
-    .style("text-anchor", "end");
-
-    //initiate Y axis
-    yAxis
-    .call(d3.axisLeft(y));
-
-    //initiate Y axis label
-    yaxislabel.text("movies");
-
-    //initiate bars, all starting at 0 at the beginning
-    svg.selectAll(".bar")
-    .data(topData)
-    .enter()
-    .append("rect")
-    .attr("class", "bar")
-    .attr("x",  function(d) {return  x(0);})
-    .attr("y", function(d) { return y(d.name); })
-    .attr("width",function(d){return x(0);} )
-    .attr("height", 15)
-    .on("mouseover", mouseover)
-    .on("mouseout", mouseout);
-
-
-    //update the bar with the transition
-    svg.selectAll(".bar")
-    .transition()
-    .duration(500)
-    .attr("width",function(d) { return  x(d[i]);}  )
-    .attr("y", function(d) { return y(d.name); })
-    .attr("height", 15)
-    .attr("fill", function(d) {
-      return "rgb(200, 80, " + (y(d.name)/2 ) + ")"});;
-
-    // add label next to bar
-    svg.append("g")
-      .attr("fill", "white")
-      .attr("text-anchor", "end")
-      .style("font", "12px sans-serif")
-    .selectAll("label-top10")
-    .data(topData)
-    .enter().append("text")
-    .attr("class", "label-top10")
-    .attr("x", d => x(d[i]) - 4)
-    .attr("y", d => y(d.name) + y.bandwidth() / 2+10)
-    .text(d => format(d[i]));
-
-    window.addEventListener('resize', () => resize(data))
-
-  };
+  window.addEventListener('resize', () => resize(data))
 
 }
 
@@ -1358,7 +1283,8 @@ function change(data) {
 
   var remake
 
-  if (topData.length < n_rows){
+  if (topData.length < n_rows || n == 0){
+    n ++;
     remake = true
   }else{
     remake = false
@@ -1396,7 +1322,6 @@ function change(data) {
   // console.log(d3.event, d3.event.target == d3.select('#label-option')._groups[0][0], d3.select('#label-option')._groups[0][0])
 
   if (remake){
-
     var bar = svg.selectAll('.bar')
     bar.remove()
 
@@ -1474,8 +1399,6 @@ function resize(data) {
   d3.select("#x-axis-top-10")
     .call(d3.axisLeft(x))
     .attr("transform", "translate(0," + height + ")")
-
-  change(data) 
 };
 
 module.exports.top10 = top10; 
